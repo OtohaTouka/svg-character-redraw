@@ -1,6 +1,6 @@
 ---
 name: "svg-character-redraw"
-description: "Redraw a character illustration (e.g. an anime character sheet) as hand-written SVG closely matching a reference, via parts iterated at zoom on a shared anatomy layer, then assembly and seam fixes."
+description: "Redraw a character illustration (e.g. an anime character sheet) as hand-written SVG closely matching a reference: measured parts on a shared anatomy layer, iterated at zoom, assembled with seam checks, optionally with a base body under the outfit."
 license: MIT
 ---
 
@@ -8,11 +8,13 @@ license: MIT
 
 Use when someone wants a character, figure or similarly detailed illustration drawn as hand-written SVG that
 should look like a given reference image (full-body standing pose, character sheet, mascot design), not a loose sketch.
-It produced a full-body anime character whose assembled SVG is hard to tell from the reference at normal viewing size.
+It produced a full-body anime character whose assembled SVG is hard to tell from the reference at normal viewing size,
+plus a base body under the outfit (for outfit swapping / rigging).
 
 Core idea: **measure first, build on an anatomical construction, split into parts that are iterated at high zoom against
 the reference in ONE shared coordinate system, then assemble and fix the seams.** Most visible flaws come from the seams
-between parts and from fixes that ignore anatomy — budget for that phase.
+between parts and from fixes that ignore anatomy — budget for that phase. Expect the person to find flaws at zoom that
+you missed; zoom every joint yourself before handing over.
 
 Only redraw characters the person owns, has a license for, or that are clearly licensed for derivative non-commercial
 use; put the original creator and licence in the SVG `<desc>`. Decline protected commercial characters.
@@ -42,7 +44,9 @@ Zoom the reference with a labelled coordinate grid (6–10x) and write anchors t
 lash line, nose, mouth, chin, face contour points, ear, neck, collar, brooch, shoulder line, cape corners, sleeve, elbow,
 wrist, hand box, corset/waist, accessories, bow centres, hem arc, boot boxes, hair width at eye level and its fan extent.
 Eyeballed anchors were off by 10–20 px (eye spacing, a ring position); measure, don't estimate.
-Note the true symmetry axis (face and arms may mirror about slightly different x than the body centre).
+Note the true symmetry axes: face/neck, arms and lower body may mirror about slightly different x (a slightly turned
+pose). Use a per-height mirror axis where they differ instead of forcing one centre line.
+When reading coordinates off a displayed image, account for display downscaling (the viewer may shrink large images).
 
 ## 3. Anatomical construction layer (construction.py) — before any part is drawn
 Estimate and overlay on the reference (render it and check visually):
@@ -50,10 +54,16 @@ Estimate and overlay on the reference (render it and check visually):
   hair thickness outside the skull (~20 px on top, 35–50 px at the sides for voluminous hair).
 - Torso: neck, jugular notch, clavicles, trapezius, shoulder joints, rib cage, waist, pelvis crest and hips.
 - Limbs: shoulder→elbow→wrist, palm centre and fingertip line; hip→knee→ankle, sole line (infer hidden legs from hips and
-  boots). Check head count (~8 heads for adult anime figures) and limb ratios.
+  boots).
+- **Check proportions in head units, heights AND widths** (head = skull top to chin). Heights: ~8 heads for an adult
+  anime figure; elbow ≈ waist, wrist ≈ crotch (crotch ≈ 3.8–4 heads from the top), knees ≈ 5.8 heads. Widths for a slender
+  adult: hips ≈ 1.4 heads, waist ≈ 0.85, thigh root ≈ 0.7, knee ≈ 0.36, calf ≈ 0.4, ankle ≈ 0.2, upper arm ≈ 0.29,
+  forearm ≈ 0.25 near the elbow tapering to ≈ 0.16 at the wrist. A figure that only passes the height checks still looks
+  like a coat hanger (pelvis 1.0 head wide, limbs half as thick) — that was rejected as uncanny.
 Why: without it, hair is traced as an outline (helmet look), the face has nothing for hair to grow from, clothes have no
 body inside, and parts read as an inorganic assembly. Hair grows from parting/hairline and wraps the skull; skin extends
 under the hair to the skull outline; sleeves wrap limb volumes between joints; cloth hangs from shoulders/waist/hips.
+Update construction.py whenever a later step corrects a landmark (it is the shared truth).
 
 ## 4. Shared brief (STYLE.md) — every part worker reads it
 Include: project layout, the part-module contract, the global layer order with one owner per layer, all anchors, the
@@ -61,20 +71,23 @@ construction summary, the target look and the iteration process below. Template 
 - Clean anime character-sheet rendering: dark warm outlines (outer ~1.8, inner ~0.9 or finer, tapered where useful),
   flat base + one or two shadow shapes following the form + small highlights; gradients only where the reference has
   them (eyes, metal, satin), subtle.
-- Cloth and hair edges are curved and slightly irregular; folds radiate from where fabric is gathered/pinned;
-  repeated elements vary a little. Never placeholder shapes (mitten hands, ball bows, box frills, straight hems).
+- Cloth and hair edges are curved and slightly irregular; folds radiate from where fabric is gathered/pinned and wrap
+  around volumes; repeated elements vary a little. Never placeholder shapes (mitten hands, ball bows, box frills,
+  straight hems, straight folds across a curved form).
 - Each part must look good alone at zoom, not just sit in the right place. Match the reference's level of detail.
 - Keep files compact: smooth Catmull-Rom/Bezier paths with few points, loops for repeats.
 
 ## 5. Split into parts
 Split by (a) what overlaps whom and (b) which detail reference exists. A good split for a full figure:
 face (+neck), hair (back / shoulder / front layers), accessories (shared motif function used everywhere, ornaments,
-neckwear, bows), upper outfit (collar, torso, cape), arms+hands, lower outfit (skirt layers, petticoat, boots).
+neckwear, bows), upper outfit (collar, torso, cape), arms+hands, lower outfit (skirt layers, petticoat, boots),
+optionally a base body (section 10).
 Rules:
 - Each layer and each element has exactly ONE owner (a tassel drawn by two parts showed up twice).
 - If a part copies another part's geometry as constants (edges it must meet), record that in the brief; whoever changes
   those edges must report the new points.
 - Build one reusable function for a repeated motif (e.g. a flower) and perfect it at high zoom first.
+- Keep separable things in separate layers from the start (e.g. hands vs sleeves), so outfits can be swapped later.
 
 ## 6. Iterate each part (in parallel if subagents are available)
 Per part: study references at zoom → write structure notes → v1 → render with `tools/compare.py` at 3–8x next to the
@@ -101,6 +114,14 @@ Open the part's final render yourself at zoom before accepting it. Typical rejec
 - Waist/peplum or any "block" shape where the reference has diagonal strips.
 - Rendering: too saturated, every strand outlined in near-black (stripes) — use sampled colours and coloured, thinner
   inner lines; keep the dark line for silhouettes and big clump edges.
+- Chest of a clothed adult figure (keep it matter-of-fact and modest, matching the reference): in front view the outer
+  line falls almost straight from the armpit, slightly outward, and is fullest at the LOWER-outer part before turning
+  under. A "(" bulge peaking at mid-chest reads as a bulging rib cage. The under-shadow is a soft U, lowest below the
+  middle of each side, fading toward the centre; a fitted top bridges across, so no centre line. Light is a soft band on
+  the upper slope, never a round spot. Hair locks beside the chest follow the reference (they often fall outside the
+  chest and tuck in under it toward the waist) — locks that cover the side of the chest flatten it.
+- Folds over a curved form wrap around it and pull toward where the garment is anchored (corset, waist); a fold or
+  drape line never runs straight across a volume — stop it above and resume it below.
 
 ## 8. Assemble and fix seams
 - `tools/assemble.py` stacks layers in the global order; render full + fixed zones (head, chest, waist, each arm, mid
@@ -108,6 +129,12 @@ Open the part's final render yourself at zoom before accepting it. Typical rejec
 - Seam checklist: ear↔face↔hair, side locks↔shoulder locks (one lock continues, no cut line, no stacked pointed ends),
   hair behind neck, braid and highlights spilling across lock edges, waist pieces, sleeves↔torso↔hair, chains/ribbons
   hidden under other layers, skirt layer gaps.
+- Joint checklist, at 5–8x, in EVERY view you deliver (outfit and base body): neck↔collar, shoulder↔arm, both elbows,
+  both wrists/cuffs, waist↔hips, knees, ankles↔feet. Hooks, kinks, double lines and skin showing past a garment edge
+  are the typical defects.
+- **Silhouette ownership**: for every visible edge decide which element owns it. If hair (or a sleeve, a cape) already
+  forms the visible edge of a body part, do not also draw that body part's contour next to it — a near-parallel second
+  line reads as a stray straight line on the form.
 - Scan for background holes: enclosed white regions in the render (snippet below), then inspect them against the
   reference; small slits between parts can be closed with an underpaint patch part drawn below the covering layers.
 - Background showing through between parts is an assembly bug, not "style".
@@ -119,19 +146,51 @@ Open the part's final render yourself at zoom before accepting it. Typical rejec
   away. Think through the 3D orientation first.
 - **A separate colour block must share its edge with a contour line**; a shade block whose edge runs elsewhere reads as a
   misaligned second outline. Prefer form shadows centred on the contour (clipped by the skin) with stacked widths for a
-  soft falloff.
+  soft falloff; a single wide shadow ribbon leaves a hard straight inner edge.
 - **The reference itself can be anatomically inconsistent and hide it** (here: the ear sat ~13 px outside the jaw line
   at lobe height, covered by a lock of hair). When a fix keeps feeling wrong, measure whether the reference is coherent.
   Then either resolve it consistently (e.g. jaw starts at the ear lobe as one convex curve; move ear/earrings slightly
   inward) or hide it the way the reference does — explain the trade-off and let the person choose.
 - Moving one part can expose or hide another (moving the ear inward hid it behind a hair lock): re-check neighbours and
   re-measure them against the reference.
+- When the person points at "a line" or "a block", isolate it before answering: toggle layers/parts off one at a time
+  and zoom; mark candidates on an image and ask which they mean if it is ambiguous.
 - Keep a backup of each part before every person-requested change and show original | before | after crops.
+- Workflow hygiene: after editing a part by replacing a text range, re-render immediately (a too-wide range silently
+  deleted a neighbouring function); watch loop variables shadowing accumulators (`for ... o in ...` overwrote the output
+  list `o`).
 
-## 10. Deliver
-Final SVG (validate XML; credit + licence in `<desc>`), PNG render, full side-by-side comparison, zoom comparisons of the
-most scrutinised areas, and a source archive (parts, tools, construction, brief, logs, backups; not the reference images
-unless their licence allows). State honestly what still differs.
+## 10. Base body under the outfit (optional: outfit swapping, rigging)
+Draw the body as a plain base layer — fitted long-sleeve top, leggings, socks — not nude, on the construction skeleton
+with the head-unit proportions of section 3, and keep the outfit view pixel-identical.
+- Layers: `body` at the very bottom (just above `hair_back`), `body_top` for pieces that must sit above the face part's
+  neck (e.g. a turtleneck), plus base-only layers (below). Define `BASE_LAYERS` (what the base view shows: hair, body,
+  hands, neck, face …) and `BASE_ONLY` (layers skipped in the outfit build).
+- **Coverage check after every change** (snippet below): render the outfit with and without the body part; the difference
+  must be ~0 (a few anti-aliased edge pixels). First map where the outfit leaves the body slot uncovered, then shape the
+  body inside that. Also diff the outfit view against the previous export: it must not change.
+- Any layer that sits above the outfit's cape or sleeves (e.g. `body_top`) must stay inside the footprint of what covers
+  it in the outfit (the outfit collar); further out, let lower layers carry the line (the torso's shoulder outline).
+- Pieces that were designed to hide under the outfit become visible in the base view: the hand's flat top edge (made to
+  tuck under a ruffle cuff), the face part's neck flare (made to tuck under a collar). List them and cover them.
+- A cover piece that must sit above a shared part, where the outfit has something BELOW that part (the wrist cuff must be
+  above the hand, but the outfit's inner sleeve is below the hand), cannot go in the shared order without showing in the
+  outfit view: make it a base-only layer.
+- Shadows that belong to one outfit element (the cuff ruffle's cast shadow on the wrist) move into that element's layer,
+  so the shared part (the hand) stays neutral for the base view.
+- Limbs are ONE closed silhouette across the joints: the outer contour runs unbroken shoulder → elbow → wrist, the inner
+  contour fades out into the armpit. Two separately outlined pieces (upper arm + forearm cap) leave a hook at the elbow.
+- Cuffs: centre the opening on the wrist (measure the hand's wrist edges in the forearm frame), ~2 px wider than the wrist
+  each side, opening turned square to the hand's direction (a relaxed hand hangs ~10° off the forearm axis), covering the
+  hand's top edge, with a narrow cast shadow just below. Taper the forearm into the wrist under the cuff.
+- Collars: a turtleneck roll is wider than the neck (~3–4 px each side), centred on the neck axis, and its flare fully
+  covers the neck part's own flare before joining the shoulder line.
+- Views to deliver: reference | outfit | base | ghost (outfit at ~40 % over the base) — `tools/views.py`.
+
+## 11. Deliver
+Final SVG(s) (validate XML; credit + licence in `<desc>`) — outfit and, if made, base body — PNG renders, full side-by-side
+comparison, zoom comparisons of the most scrutinised areas, and a source archive (parts, tools, construction, brief, logs,
+backups; not the reference images unless their licence allows). State honestly what still differs.
 
 ---
 
@@ -142,7 +201,7 @@ project/
   construction.py   skull / joints / guide_svg() overlay
   STYLE.md          shared brief
   parts/<part>.py   defs() + layers() per part; <part>_log.md
-  tools/assemble.py tools/compare.py tools/grid.py
+  tools/assemble.py tools/compare.py tools/grid.py tools/views.py
   ref/front.png     target crop (its size = viewBox);  ref/parts/*.png detail references
   renders/  out/  backup/
 ```
@@ -153,6 +212,7 @@ def defs():   return ''          # gradient/clip ids MUST start with '<part>-'
 def layers(): return {'<layer>': '<svg elements>'}   # only layers this part owns
 ```
 Rendering needs `pip install cairosvg pillow numpy scipy --break-system-packages` (if missing).
+Clip paths used inside a `mirror()` group are applied in the mirrored coordinates, so one clip id serves both sides.
 
 ## tools: lib.py (core helpers)
 ```python
@@ -207,14 +267,19 @@ def shape(pts, fill, stroke=None, sw=LW_OUT, close=True, smooth=True, extra=''):
 def line(pts, stroke, sw=LW_IN, extra=''): return path(smooth_d(pts), 'none', stroke, sw, extra)
 def mirror(svg, cx=CX): return f'<g transform="translate({f(2*cx)} 0) scale(-1 1)">{svg}</g>'
 ```
+Limb frame helper (place sleeves, cuffs and hands along a bone): `F(u, v) = A + u*U + v*V`, with `U` the unit vector from
+joint A to joint B and `V = (-U.y, U.x)`; `u` runs along the bone, `v` across it.
 
 ## tools/assemble.py
 ```python
 import glob, importlib.util, os, sys, traceback
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ROOT)
 from lib import W, H
-ORDER = ['hair_back', 'boots', 'petticoat', 'skirt', 'skirt_acc', 'skirt_bows', 'arms', 'torso', 'cape',
-         'hair_shoulder', 'neck', 'collar', 'neckwear', 'face', 'hair_front', 'ornament']   # adapt per figure
+ORDER = ['hair_back', 'body', 'boots', 'petticoat', 'skirt', 'skirt_acc', 'skirt_bows', 'arms_back', 'hands',
+         'body_cuffs', 'arms', 'torso', 'cape', 'hair_shoulder', 'neck', 'body_top', 'collar', 'neckwear', 'face',
+         'hair_front', 'ornament']                                                   # adapt per figure
+BASE_LAYERS = ['hair_back', 'body', 'hands', 'body_cuffs', 'hair_shoulder', 'neck', 'body_top', 'face', 'hair_front']
+BASE_ONLY = ['body_cuffs']          # base-view-only layers, skipped in the outfit build
 def load_parts(only=None):
     mods = {}
     sys.path.insert(0, os.path.join(ROOT, 'parts'))
@@ -235,6 +300,7 @@ def build(only_parts=None, only_layers=None, viewbox=(0, 0, W, H), bg='#ffffff',
             for ln, svg in m.layers().items():
                 if ln not in stacks: print(f'[assemble] {name}: unknown layer {ln}', file=sys.stderr); continue
                 if only_layers and ln not in only_layers: continue
+                if not only_layers and ln in BASE_ONLY: continue
                 stacks[ln].append(f'<g id="{name}-{ln}">{svg}</g>')
         except Exception: print(f'[assemble] skip {name}', file=sys.stderr); traceback.print_exc(limit=3)
     x0, y0, x1, y1 = viewbox
@@ -285,6 +351,8 @@ for p in panels: out.paste(p, (x, 0)); x += p.width + 8
 if out.width > a.maxw: out = out.resize((a.maxw, int(out.height*a.maxw/out.width)), Image.LANCZOS)
 os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); out.save(a.out)
 ```
+To zoom the base view or isolate a line, call `build(None, layer_list, viewbox=box)` directly with a layer list
+(e.g. `BASE_LAYERS`, or `ORDER` minus one layer) and rasterise it.
 
 ## tools/grid.py
 ```python
@@ -307,6 +375,26 @@ for gy in range(-(-y0 // a.step) * a.step, y1+1, a.step):
 im.save(a.out)
 ```
 To grid your own render in the same coordinates, rasterise the assembled SVG at 2x with cairosvg and downsample to W x H.
+
+## tools/views.py (outfit / base / ghost)
+```python
+# python3 tools/views.py out/ [scale]  -> out/<name>_base.svg, renders/views_check.png (ref | outfit | base | ghost)
+import io, os, sys, cairosvg
+from PIL import Image
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools')); sys.path.insert(0, ROOT)
+from assemble import build, BASE_LAYERS
+from lib import W, H
+out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'out'); s = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
+w, h = int(W * s), int(H * s)
+png = lambda svg: Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode(), output_width=w, output_height=h))).convert('RGB')
+base_svg = build(None, BASE_LAYERS); open(os.path.join(out, 'base.svg'), 'w').write(base_svg)
+base, full = png(base_svg), png(build()); ghost = Image.blend(base, full, 0.38)
+ref = Image.open(os.path.join(ROOT, 'ref', 'front.png')).convert('RGB').resize((w, h), Image.LANCZOS)
+sheet = Image.new('RGB', (w * 4 + 24, h), (200, 200, 205))
+for i, im in enumerate((ref, full, base, ghost)): sheet.paste(im, (i * (w + 8), 0))
+sheet.save(os.path.join(ROOT, 'renders', 'views_check.png'))
+```
 
 ## construction.py (shape)
 Module constants (SKULL dict cx/cy/rx/ry, HAIRLINE, PARTING, EAR_L/R, JAW, NECK, CLAVICLES, SHOULDER_L/R, RIBCAGE,
@@ -335,5 +423,31 @@ border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
 holes = sorted(((int((lab == i).sum()), *np.argwhere(lab == i).mean(0)[::-1].astype(int)) for i in range(1, n+1)
                 if i not in border and (lab == i).sum() >= 4), reverse=True)
 ```
+Coverage check for a base body (outfit view rendered with and without the body part; any difference = body peeking out):
+```python
+import io, sys, numpy as np, cairosvg; from PIL import Image, ImageChops; from scipy import ndimage
+sys.path.insert(0, 'tools'); sys.path.insert(0, '.'); import assemble
+mods = assemble.load_parts()
+def render(skip):
+    defs, st = [], {k: [] for k in assemble.ORDER}
+    for n, m in mods.items():
+        if n == skip: continue
+        if hasattr(m, 'defs'): defs.append(m.defs())
+        for ln, svg in m.layers().items():
+            if ln not in assemble.BASE_ONLY: st[ln].append(svg)
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {assemble.W} {assemble.H}" width="{assemble.W}" '
+           f'height="{assemble.H}"><defs>{"".join(defs)}</defs><rect width="100%" height="100%" fill="#fff"/>'
+           + ''.join(''.join(st[k]) for k in assemble.ORDER) + '</svg>')
+    return Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode()))).convert('RGB')
+m = np.asarray(ImageChops.difference(render(None), render('body'))).max(2) > 24
+lab, n = ndimage.label(ndimage.binary_dilation(m, iterations=2))
+print('peeking px', int(m.sum()))
+for i in range(1, n + 1):
+    ys, xs = np.nonzero((lab == i) & m)
+    if len(xs): print(len(xs), 'px  x', xs.min(), xs.max(), ' y', ys.min(), ys.max())
+```
+Use the same difference against the previous export's PNG to confirm the outfit view did not change.
+
 Soft form shadow along a contour (no misaligned block edge): draw 3 ribbons centred on the contour points, widths
-13/9/5 at opacity .14/.16/.2 in the shadow colour, inside a clip-path of the skin shape.
+13/9/5 at opacity .14/.16/.2 in the shadow colour, inside a clip-path of the skin shape. For a side shade that must
+fade inward, stack widths like 20/13/7 at opacity .3/.35/.4 along the same centre line.

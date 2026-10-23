@@ -13,14 +13,18 @@ The workflow in short:
 5. Assemble, then check every seam zone at zoom (ear/face/hair, shoulder locks, waist, sleeves, background holes).
 6. Write fixes that preserve what is already right and respect anatomy (hand orientation, ear ↔ jaw, shading that
    shares its edge with the contour); detect when the reference itself is anatomically inconsistent.
+7. Optionally draw a base body under the outfit (fitted base layer, head-unit proportions checked for widths as well as
+   heights, continuous limbs across joints, fitted cuffs and collar) and verify it never peeks out of the outfit view.
 
-The skill embeds the helper tools (`lib.py`, `assemble.py`, `compare.py`, `grid.py`, palette and hole-scan snippets),
+The skill embeds the helper tools (`lib.py`, `assemble.py`, `compare.py`, `grid.py`, `views.py`, palette, hole-scan and
+base-body coverage snippets),
 so Claude can recreate the whole working environment in a new session.
 
 ## 中文說明
 
 讓 Claude 依照參考圖，用手寫 SVG 重繪角色立繪的技能。流程：精確量測 → 先建人體構造層 → 共用規範 →
-拆部位放大迭代 → 組合後逐區檢查接縫 → 依解剖結構下修正指示。比對、格線、組合等工具程式碼都附在技能裡。
+拆部位放大迭代 → 組合後逐區檢查接縫 → 依解剖結構下修正指示 →（選用）在衣服底下畫素體，
+並確認素體不會從衣服下露出。比對、格線、組合、素體檢查等工具程式碼都附在技能裡。
 
 ## Install
 
