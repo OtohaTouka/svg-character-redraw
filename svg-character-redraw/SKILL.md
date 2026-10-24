@@ -1,6 +1,6 @@
 ---
 name: "svg-character-redraw"
-description: "Redraw a character illustration (e.g. an anime character sheet) as hand-written SVG closely matching a reference: measured parts on a shared anatomy layer, iterated at zoom, assembled with seam checks, optionally with a base body under the outfit."
+description: "Redraw a character illustration (e.g. an anime character sheet) as hand-written SVG closely matching a reference: measured parts on a shared anatomy layer, iterated at zoom, assembled with seam checks, optionally with a base body under the outfit and extra outfit/hair sets transferred from other character sheets."
 license: MIT
 ---
 
@@ -9,7 +9,8 @@ license: MIT
 Use when someone wants a character, figure or similarly detailed illustration drawn as hand-written SVG that
 should look like a given reference image (full-body standing pose, character sheet, mascot design), not a loose sketch.
 It produced a full-body anime character whose assembled SVG is hard to tell from the reference at normal viewing size,
-plus a base body under the outfit (for outfit swapping / rigging).
+plus a base body under the outfit (for outfit swapping / rigging), plus a second outfit and hair style transferred from
+a different character sheet onto the same base body, face and pose (section 11).
 
 Core idea: **measure first, build on an anatomical construction, split into parts that are iterated at high zoom against
 the reference in ONE shared coordinate system, then assemble and fix the seams.** Most visible flaws come from the seams
@@ -81,7 +82,7 @@ construction summary, the target look and the iteration process below. Template 
 Split by (a) what overlaps whom and (b) which detail reference exists. A good split for a full figure:
 face (+neck), hair (back / shoulder / front layers), accessories (shared motif function used everywhere, ornaments,
 neckwear, bows), upper outfit (collar, torso, cape), arms+hands, lower outfit (skirt layers, petticoat, boots),
-optionally a base body (section 10).
+optionally a base body (section 10) and further outfit sets on it (section 11).
 Rules:
 - Each layer and each element has exactly ONE owner (a tassel drawn by two parts showed up twice).
 - If a part copies another part's geometry as constants (edges it must meet), record that in the brief; whoever changes
@@ -114,14 +115,44 @@ Open the part's final render yourself at zoom before accepting it. Typical rejec
 - Waist/peplum or any "block" shape where the reference has diagonal strips.
 - Rendering: too saturated, every strand outlined in near-black (stripes) — use sampled colours and coloured, thinner
   inner lines; keep the dark line for silhouettes and big clump edges.
-- Chest of a clothed adult figure (keep it matter-of-fact and modest, matching the reference): in front view the outer
-  line falls almost straight from the armpit, slightly outward, and is fullest at the LOWER-outer part before turning
-  under. A "(" bulge peaking at mid-chest reads as a bulging rib cage. The under-shadow is a soft U, lowest below the
-  middle of each side, fading toward the centre; a fitted top bridges across, so no centre line. Light is a soft band on
-  the upper slope, never a round spot. Hair locks beside the chest follow the reference (they often fall outside the
-  chest and tuck in under it toward the waist) — locks that cover the side of the chest flatten it.
+- Chest of a clothed adult figure (keep it matter-of-fact and modest, matching the reference): two rounded volumes on
+  the upper chest, built like spheres under one light (a manga shading guide or a 3D anime base mesh is a good
+  reference): the upper slope blends into the chest with no line; the lower half turns away (shade inside the lower
+  edge, heavier on the side away from the light); a soft cast shadow on the rib cage just below, darkest under the
+  lowest point and fading toward the centre; a soft radial light (gradient falloff, no hard edge) on the upper part
+  facing the light; a thin tapered outer-lower contour that starts just inside the arm and fades out at both ends.
+  In front view the outer line falls almost straight from the armpit and is fullest at the LOWER-outer part; a "("
+  bulge peaking at mid-chest reads as a bulging rib cage. A fitted top bridges across, so no centre line, and no long
+  vertical streaks (drape lines from the shoulder, side strokes) anywhere on the torso — they read as straight lines.
+  Hair locks beside the chest follow the reference; locks that cover the side of the chest flatten it. Never leave
+  the form unfinished because hair covers it today (section 10).
 - Folds over a curved form wrap around it and pull toward where the garment is anchored (corset, waist); a fold or
   drape line never runs straight across a volume — stop it above and resume it below.
+- Long hair rendered as glossy cylinders (a light streak down the middle of every lock plus dark edges) reads as
+  noodles/tentacles. Use flat cel clumps: base + ONE shade band on the side away from the light + a few fine,
+  low-contrast strand lines; light strokes only on the top-most clumps. Vary widths a lot: broad clumps (20–35 px at
+  this scale) near the roots that split at 55–70 % of their length into 2–4 thin tapering wisps curling different ways;
+  thinner, more separated strands toward the ends; each clump with its own S-wave (phase, amplitude, period growing
+  toward the tip). Generating them in code along hand-placed guide curves (seeded random) works well.
+- Hair framing the face: thin, layered locks with gaps (neck/collar/background showing through), wisps along the cheek;
+  two solid side curtains box the face in and were rejected as too thick.
+- Dyed / two-tone hair: one vertical `userSpaceOnUse` gradient per tone (base, shade, light, outline …) shared by all
+  locks; 2–3 gradient sets with different transition heights (front/outer locks change lower, inner/back higher) so it
+  reads as dyed ends, not a cut line; keep the VALUE level through the blend (a mid colour darker than both ends shows
+  as a muddy band).
+- Keep hair clumps out from directly behind the hands: fingers framing a clump read as gripping or combing the hair.
+- Boots in front view: a straight stovepipe shaft that flares into a trapezoid/bell foot reads as an elephant foot.
+  The shaft narrows slightly to the ankle (a slightly flared, slouchy top), then the foot is a separate rounded toe-box
+  volume pointing toward the viewer and a little outward (convex sides, lowest point at the toe, a crescent light on the
+  toe cap), a dark sole band INSIDE the outline following the toe round, and only a sliver of the heel behind the inner
+  side.
+- Garment silhouettes: name the side profile — straight (tube), convex (bell / lampshade) or concave (saddle) — and
+  compare it with the reference before drawing. A fold-over turtleneck is a saddle: wide rounded fold at the top, a
+  slightly pinched middle, a flare onto the shoulders, ribs converging at the pinch. Ours went tube → bell → saddle
+  because the profile was never named.
+- Zoom artefacts to scan for: hard-edged rectangles from switching opacity per stroke segment (light the form with soft
+  overlays instead); horizontal seams where many rib/hatching strokes break at the same height (give each stroke its
+  own random gaps, kept away from its neighbours' gaps).
 
 ## 8. Assemble and fix seams
 - `tools/assemble.py` stacks layers in the global order; render full + fixed zones (head, chest, waist, each arm, mid
@@ -158,7 +189,13 @@ Open the part's final render yourself at zoom before accepting it. Typical rejec
 - Keep a backup of each part before every person-requested change and show original | before | after crops.
 - Workflow hygiene: after editing a part by replacing a text range, re-render immediately (a too-wide range silently
   deleted a neighbouring function); watch loop variables shadowing accumulators (`for ... o in ...` overwrote the output
-  list `o`).
+  list `o`). When offsetting a curve inward (sole band, hem band, rim), check the normal's side on a render — a sign
+  error put a boot's welt highlight outside its outline.
+- **Stop describing after two failed rounds.** If a delegated shape is still wrong after two rounds of verbal
+  instructions (the boots: "narrower ankle", "convex curves" …), give target coordinates for the outline, or redraw it
+  yourself as the lead. Words like "rounder" or "less straight" kept producing variations of the same wrong structure.
+- Anchors you hand to part workers inherit everything about the reference, including its pose (section 11): check
+  where each anchor comes from before using it as a target.
 
 ## 10. Base body under the outfit (optional: outfit swapping, rigging)
 Draw the body as a plain base layer — fitted long-sleeve top, leggings, socks — not nude, on the construction skeleton
@@ -186,8 +223,47 @@ with the head-unit proportions of section 3, and keep the outfit view pixel-iden
 - Collars: a turtleneck roll is wider than the neck (~3–4 px each side), centred on the neck axis, and its flare fully
   covers the neck part's own flare before joining the shoulder line.
 - Views to deliver: reference | outfit | base | ghost (outfit at ~40 % over the base) — `tools/views.py`.
+- The base must read on its own, independent of any outfit's hair. A contour left out because the first hair style
+  covered it (the chest outline) became an unfinished, odd-looking form as soon as a different hair style was used.
+  Silhouette ownership (section 8) is decided per view.
 
-## 11. Deliver
+## 11. More outfit sets from another reference (outfit / hair transfer)
+Use when the person wants the existing figure (base body, face, pose) dressed in clothes and/or hair from a DIFFERENT
+character sheet. That sheet differs in proportions, pose and rendering, so this is fitting, not tracing.
+- **Agree what transfers** (e.g. hair + clothes) and what stays (face, pose, rendering style). If the sheet has several
+  versions (skirt vs trousers, long vs short hair) that disagree, let the person pick one. Translate a painterly sheet
+  into the existing cel style.
+- **Outfit sets in the assembler**: shared modules (base body, face, hands) + one folder per set (`parts_<set>/`), each
+  set with its own layer ORDER (a tucked-in sweater needs the skirt ABOVE the sweater, the opposite of the first
+  outfit's corset), BASE_LAYERS, BASE_ONLY and a per-module layer filter (take only the `hands` layer from the arms
+  module). A shared `_common.py` (underscore = not a part) holds the set's palette, the base outlines and frame helpers.
+  **After every change, rebuild every other set and compare** (SVG checksum or pixel diff of the outfit view must not
+  change) and run the coverage check per set.
+- **Align the new sheet onto your canvas** for placement (`tools/align_ref.py` pattern, snippet below):
+  - full figure: if its head/body ratio differs (7.5 vs 8.2 heads here), map y piecewise with separate scales above
+    and below the chin, and x about a measured centre line;
+  - close-ups (head, bust): **similarity transform only (rotation + uniform scale) from TWO landmarks** (the irises).
+    Never a 3-point affine that forces a third landmark (the chin) onto yours: it stretched the head 16 % along one axis
+    and sheared it ~6°, the hair built on it inherited the distortion, and the person spotted it. A slightly turned face
+    legitimately puts its chin off your centre line — accept that offset. Before using any alignment, decompose its
+    linear part (singular values equal, mapped axes at 90°).
+  - Then measure all anchors on the aligned reference **overlaid on your base body** (compare `--overlay`), and fit
+    every garment to YOUR body by landmarks (hem at the knee, cuff at the wrist, waistband at the waist), not to the
+    sheet's pixels.
+- **Strip the sheet's pose from the anchors.** Hands in pockets pulled the coat fronts apart on the sheet; those front
+  edges, handed over as anchors, produced a kink at the waist on a figure whose arms hang free. Garment edges affected
+  by the sheet's pose are re-derived for your pose (free-hanging fronts fall in one smooth line from the lapel break to
+  the hem).
+- Garments must cover the base body wherever the outfit hides it (base outline + 2–3 px; check with `tools/peek.py`);
+  pass exact outlines between part workers whenever a seam appears (sweater sides vs coat fronts vs waistband).
+- **Hair shaped around one outfit can look wrong elsewhere**: long fans flowing out from behind wide coat sleeves looked
+  unnatural on the bare base body. Offer a per-view variant layer (base-only) or one length that reads in both views;
+  here the person chose waist length for both.
+- Each set gets its own brief (`STYLE_<set>.md`): fixed decisions, aligned references, base-body anchors, layer order
+  and owners, palette sampled from the new sheet.
+- Deliver per set: reference | outfit | base, plus the head close-up against the aligned head reference.
+
+## 12. Deliver
 Final SVG(s) (validate XML; credit + licence in `<desc>`) — outfit and, if made, base body — PNG renders, full side-by-side
 comparison, zoom comparisons of the most scrutinised areas, and a source archive (parts, tools, construction, brief, logs,
 backups; not the reference images unless their licence allows). State honestly what still differs.
@@ -199,10 +275,12 @@ backups; not the reference images unless their licence allows). State honestly w
 project/
   lib.py            palette P, line widths, curve helpers (shared, read-only for part workers)
   construction.py   skull / joints / guide_svg() overlay
-  STYLE.md          shared brief
+  STYLE.md          shared brief            STYLE_<set>.md  brief of an extra outfit set (section 11)
   parts/<part>.py   defs() + layers() per part; <part>_log.md
-  tools/assemble.py tools/compare.py tools/grid.py tools/views.py
+  parts_<set>/      modules of an extra outfit set (+ _common.py: its palette, base outlines, helpers)
+  tools/assemble.py tools/compare.py tools/grid.py tools/views.py tools/peek.py tools/align_ref.py
   ref/front.png     target crop (its size = viewBox);  ref/parts/*.png detail references
+  ref_<set>/        the other sheet + its aligned versions (front_aligned.png, head_aligned.png)
   renders/  out/  backup/
 ```
 Part contract:
@@ -280,70 +358,88 @@ ORDER = ['hair_back', 'body', 'boots', 'petticoat', 'skirt', 'skirt_acc', 'skirt
          'hair_front', 'ornament']                                                   # adapt per figure
 BASE_LAYERS = ['hair_back', 'body', 'hands', 'body_cuffs', 'hair_shoulder', 'neck', 'body_top', 'face', 'hair_front']
 BASE_ONLY = ['body_cuffs']          # base-view-only layers, skipped in the outfit build
-def load_parts(only=None):
+# an extra outfit set (section 11): its own order - e.g. the skirt above a tucked-in sweater
+ORDER_COAT = ['hair_back', 'coat_back', 'body', 'legwear', 'boots', 'sweater', 'skirt', 'coat', 'hands', 'body_cuffs',
+              'sweater_cuffs', 'coat_sleeves', 'hair_shoulder', 'neck', 'body_top', 'turtleneck', 'face', 'hair_front']
+SETS = {  # dirs: {folder: allowed module names or None = all}; layer_filter: only these layers of a shared module
+    'main': dict(dirs={'parts': None}, order=ORDER, base_layers=BASE_LAYERS, base_only=BASE_ONLY, layer_filter={}),
+    'coat': dict(dirs={'parts': ['body', 'face', 'arms'], 'parts_coat': None}, order=ORDER_COAT,
+                 base_layers=BASE_LAYERS, base_only=['body_cuffs', 'body_top'], layer_filter={'arms': ['hands']}),
+}
+def load_parts(only=None, set_name='main'):
     mods = {}
-    sys.path.insert(0, os.path.join(ROOT, 'parts'))
-    for fn in sorted(glob.glob(os.path.join(ROOT, 'parts', '*.py'))):
-        name = os.path.splitext(os.path.basename(fn))[0]
-        if name.startswith('_') or (only and name not in only): continue
-        try:
-            spec = importlib.util.spec_from_file_location(f'part_{name}', fn); m = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(m)
-            if hasattr(m, 'layers'): mods[name] = m
-        except Exception: print(f'[assemble] skip {name}', file=sys.stderr); traceback.print_exc(limit=2)
+    for d, allowed in SETS[set_name]['dirs'].items():
+        sys.path.insert(0, os.path.join(ROOT, d))          # lets a set's modules `from _common import *`
+        for fn in sorted(glob.glob(os.path.join(ROOT, d, '*.py'))):
+            name = os.path.splitext(os.path.basename(fn))[0]
+            if name.startswith('_') or (allowed is not None and name not in allowed) or (only and name not in only):
+                continue
+            try:
+                spec = importlib.util.spec_from_file_location(f'part_{name}', fn); m = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(m)
+                if hasattr(m, 'layers'): mods[name] = m
+            except Exception: print(f'[assemble] skip {name}', file=sys.stderr); traceback.print_exc(limit=2)
     return mods
-def build(only_parts=None, only_layers=None, viewbox=(0, 0, W, H), bg='#ffffff', title='', desc=''):
-    mods = load_parts(only_parts); defs, stacks = [], {k: [] for k in ORDER}
+def build(only_parts=None, only_layers=None, viewbox=(0, 0, W, H), bg='#ffffff', title='', desc='', set_name='main',
+          skip_parts=()):
+    cfg = SETS[set_name]; mods = load_parts(only_parts, set_name); defs, stacks = [], {k: [] for k in cfg['order']}
     for name, m in mods.items():
+        if name in skip_parts: continue
         try:
             if hasattr(m, 'defs'): defs.append(m.defs())
             for ln, svg in m.layers().items():
+                if name in cfg['layer_filter'] and ln not in cfg['layer_filter'][name]: continue
                 if ln not in stacks: print(f'[assemble] {name}: unknown layer {ln}', file=sys.stderr); continue
                 if only_layers and ln not in only_layers: continue
-                if not only_layers and ln in BASE_ONLY: continue
+                if not only_layers and ln in cfg['base_only']: continue
                 stacks[ln].append(f'<g id="{name}-{ln}">{svg}</g>')
         except Exception: print(f'[assemble] skip {name}', file=sys.stderr); traceback.print_exc(limit=3)
     x0, y0, x1, y1 = viewbox
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {x1-x0} {y1-y0}" width="{x1-x0}" height="{y1-y0}">'
             f'<title>{title}</title><desc>{desc}</desc><defs>{"".join(defs)}</defs>'
             f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" fill="{bg}"/>'
-            + ''.join(''.join(stacks[k]) for k in ORDER) + '</svg>\n')
-if __name__ == '__main__':
-    open(sys.argv[1], 'w').write(build())
+            + ''.join(''.join(stacks[k]) for k in cfg['order']) + '</svg>\n')
+if __name__ == '__main__':   # python3 tools/assemble.py out/full.svg [set]
+    open(sys.argv[1], 'w').write(build(set_name=sys.argv[2] if len(sys.argv) > 2 else 'main'))
 ```
 
 ## tools/compare.py
 ```python
-# python3 tools/compare.py --part face --box x0,y0,x1,y1 --scale 5 [--layers a,b] [--context] [--guide]
-#        [--detail B02.png --detail-box ...] --out renders/face_r1.png        (--part ALL = assembled figure)
-# panels: reference crop | part alone | (--context) all parts | (--detail) detail reference
+# python3 tools/compare.py --part face --box x0,y0,x1,y1 --scale 5 [--layers a,b] [--context] [--guide] [--overlay]
+#        [--set coat] [--ref ref_coat/head_aligned.png] [--detail B02.png|path --detail-box ...] --out renders/face_r1.png
+# panels: reference crop | part alone | (--context) all parts | (--overlay) assembled over the reference at 50 %
+#         | (--detail) detail reference.   --part ALL = assembled figure.
 import argparse, io, os, sys, cairosvg
 from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools')); sys.path.insert(0, ROOT)
 from assemble import build
+REF = {'main': os.path.join(ROOT, 'ref', 'front.png'), 'coat': os.path.join(ROOT, 'ref_coat', 'front_aligned.png')}
 ap = argparse.ArgumentParser()
 for a_, kw in (('--part', dict(required=True)), ('--layers', {}), ('--box', dict(default='0,0,937,1678')),
                ('--scale', dict(type=float, default=3.0)), ('--context', dict(action='store_true')),
-               ('--guide', dict(action='store_true')), ('--detail', {}), ('--detail-box', {}),
+               ('--guide', dict(action='store_true')), ('--overlay', dict(action='store_true')),
+               ('--set', dict(default='main')), ('--ref', {}), ('--detail', {}), ('--detail-box', {}),
                ('--maxw', dict(type=int, default=3000)), ('--out', dict(required=True))):
     ap.add_argument(a_, **kw)
 a = ap.parse_args()
 x0, y0, x1, y1 = [float(v) for v in a.box.split(',')]; w, h = int((x1-x0)*a.scale), int((y1-y0)*a.scale)
 layers = a.layers.split(',') if a.layers else None
 def render(parts):
-    svg = build(parts, layers if parts else None, viewbox=(x0, y0, x1, y1))
+    svg = build(parts, layers if parts else None, viewbox=(x0, y0, x1, y1), set_name=a.set)
     return Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode(), output_width=w, output_height=h))).convert('RGB')
-panels = [Image.open(os.path.join(ROOT, 'ref', 'front.png')).convert('RGB').crop((int(x0), int(y0), int(x1), int(y1))).resize((w, h), Image.LANCZOS)]
+panels = [Image.open(a.ref or REF[a.set]).convert('RGB').crop((int(x0), int(y0), int(x1), int(y1))).resize((w, h), Image.LANCZOS)]
 if a.part != 'ALL': panels.append(render(a.part.split(',')))
-if a.context or a.part == 'ALL': panels.append(render(None))
+ctx = render(None) if (a.context or a.part == 'ALL' or a.overlay) else None
+if a.context or a.part == 'ALL': panels.append(ctx)
+if a.overlay: panels.append(Image.blend(panels[0], ctx, 0.5))
 if a.guide:
     import construction
     g = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {x1-x0} {y1-y0}" width="{w}" height="{h}">{construction.guide_svg()}</svg>'
     gi = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=g.encode(), output_width=w, output_height=h))).convert('RGBA')
     for i, p in enumerate(panels): b = p.convert('RGBA'); b.alpha_composite(gi); panels[i] = b.convert('RGB')
 if a.detail:
-    d = Image.open(os.path.join(ROOT, 'ref', 'parts', a.detail)).convert('RGB')
+    d = Image.open(a.detail if os.path.exists(a.detail) else os.path.join(ROOT, 'ref', 'parts', a.detail)).convert('RGB')
     if a.detail_box: d = d.crop(tuple(int(v) for v in a.detail_box.split(',')))
     panels.append(d.resize((max(1, int(d.width*h/d.height)), h), Image.LANCZOS))
 out = Image.new('RGB', (sum(p.width for p in panels) + 8*(len(panels)-1), h), (200, 200, 205)); x = 0
@@ -378,22 +474,24 @@ To grid your own render in the same coordinates, rasterise the assembled SVG at 
 
 ## tools/views.py (outfit / base / ghost)
 ```python
-# python3 tools/views.py out/ [scale]  -> out/<name>_base.svg, renders/views_check.png (ref | outfit | base | ghost)
+# python3 tools/views.py out/ [scale] [set] -> out/base[_set].svg, renders/views_check[_set].png (ref|outfit|base|ghost)
 import io, os, sys, cairosvg
 from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools')); sys.path.insert(0, ROOT)
-from assemble import build, BASE_LAYERS
+from assemble import build, SETS
 from lib import W, H
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'out'); s = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
+st = sys.argv[3] if len(sys.argv) > 3 else 'main'; sfx = '' if st == 'main' else f'_{st}'
 w, h = int(W * s), int(H * s)
 png = lambda svg: Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode(), output_width=w, output_height=h))).convert('RGB')
-base_svg = build(None, BASE_LAYERS); open(os.path.join(out, 'base.svg'), 'w').write(base_svg)
-base, full = png(base_svg), png(build()); ghost = Image.blend(base, full, 0.38)
-ref = Image.open(os.path.join(ROOT, 'ref', 'front.png')).convert('RGB').resize((w, h), Image.LANCZOS)
+base_svg = build(None, SETS[st]['base_layers'], set_name=st); open(os.path.join(out, f'base{sfx}.svg'), 'w').write(base_svg)
+base, full = png(base_svg), png(build(set_name=st)); ghost = Image.blend(base, full, 0.38)
+ref_path = os.path.join(ROOT, 'ref', 'front.png') if st == 'main' else os.path.join(ROOT, f'ref_{st}', 'front_aligned.png')
+ref = Image.open(ref_path).convert('RGB').resize((w, h), Image.LANCZOS)
 sheet = Image.new('RGB', (w * 4 + 24, h), (200, 200, 205))
 for i, im in enumerate((ref, full, base, ghost)): sheet.paste(im, (i * (w + 8), 0))
-sheet.save(os.path.join(ROOT, 'renders', 'views_check.png'))
+sheet.save(os.path.join(ROOT, 'renders', f'views_check{sfx}.png'))
 ```
 
 ## construction.py (shape)
@@ -412,7 +510,7 @@ def dom(path, box, k=5, seed=0):
     for _ in range(15):
         l = ((a[:, None] - c[None])**2).sum(2).argmin(1)
         c = np.array([a[l == i].mean(0) if (l == i).any() else c[i] for i in range(k)])
-    return sorted((('#%02x%02x%02x' % tuple(int(v) for v in c[i])), int((l == i).sum())) for i in range(k)), key=lambda t: -t[1])
+    return sorted([('#%02x%02x%02x' % tuple(int(v) for v in c[i]), int((l == i).sum())) for i in range(k)], key=lambda t: -t[1])
 ```
 Hole scan (white regions not connected to the border; inspect each against the reference — gaps between hair strands are fine):
 ```python
@@ -423,30 +521,54 @@ border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
 holes = sorted(((int((lab == i).sum()), *np.argwhere(lab == i).mean(0)[::-1].astype(int)) for i in range(1, n+1)
                 if i not in border and (lab == i).sum() >= 4), reverse=True)
 ```
-Coverage check for a base body (outfit view rendered with and without the body part; any difference = body peeking out):
+tools/peek.py — coverage check for a base body (outfit view rendered with and without the body part; any difference =
+body peeking out). Run it for every set after every change:
 ```python
-import io, sys, numpy as np, cairosvg; from PIL import Image, ImageChops; from scipy import ndimage
-sys.path.insert(0, 'tools'); sys.path.insert(0, '.'); import assemble
-mods = assemble.load_parts()
-def render(skip):
-    defs, st = [], {k: [] for k in assemble.ORDER}
-    for n, m in mods.items():
-        if n == skip: continue
-        if hasattr(m, 'defs'): defs.append(m.defs())
-        for ln, svg in m.layers().items():
-            if ln not in assemble.BASE_ONLY: st[ln].append(svg)
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {assemble.W} {assemble.H}" width="{assemble.W}" '
-           f'height="{assemble.H}"><defs>{"".join(defs)}</defs><rect width="100%" height="100%" fill="#fff"/>'
-           + ''.join(''.join(st[k]) for k in assemble.ORDER) + '</svg>')
-    return Image.open(io.BytesIO(cairosvg.svg2png(bytestring=svg.encode()))).convert('RGB')
-m = np.asarray(ImageChops.difference(render(None), render('body'))).max(2) > 24
+# python3 tools/peek.py [set] [--save renders/peek.png]
+import io, os, sys, cairosvg, numpy as np; from PIL import Image, ImageChops; from scipy import ndimage
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'tools')); sys.path.insert(0, ROOT)
+from assemble import build, W, H
+st = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith('--') else 'main'
+render = lambda skip: Image.open(io.BytesIO(cairosvg.svg2png(bytestring=build(set_name=st, skip_parts=skip).encode(),
+                                                              output_width=W, output_height=H))).convert('RGB')
+a = render(())
+m = np.asarray(ImageChops.difference(a, render(('body',)))).max(2) > 24
 lab, n = ndimage.label(ndimage.binary_dilation(m, iterations=2))
 print('peeking px', int(m.sum()))
 for i in range(1, n + 1):
     ys, xs = np.nonzero((lab == i) & m)
-    if len(xs): print(len(xs), 'px  x', xs.min(), xs.max(), ' y', ys.min(), ys.max())
+    if len(xs) > 2: print(len(xs), 'px  x', xs.min(), xs.max(), ' y', ys.min(), ys.max())
+if '--save' in sys.argv:
+    arr = np.asarray(a).copy(); arr[m] = (255, 0, 0); Image.fromarray(arr).save(sys.argv[sys.argv.index('--save') + 1])
 ```
 Use the same difference against the previous export's PNG to confirm the outfit view did not change.
+
+tools/align_ref.py pattern — map another sheet onto your canvas (sample OUR pixel grid in sheet coordinates):
+```python
+import numpy as np; from PIL import Image; from scipy.ndimage import map_coordinates
+from lib import W, H, CX
+src = np.asarray(Image.open('ref_coat/sheet.jpg').convert('RGB')).astype(np.float32); bg = src[5:40, 5:40].reshape(-1, 3).mean(0)
+Y, X = np.mgrid[0:H, 0:W].astype(np.float32)
+def sample(sx, sy):
+    return Image.fromarray(np.clip(np.stack([map_coordinates(src[..., c], [sy, sx], order=1, mode='constant',
+                                                             cval=float(bg[c])) for c in range(3)], -1), 0, 255).astype(np.uint8))
+# 1) close-up: SIMILARITY from two landmark pairs (rotation + uniform scale; never force a third point)
+z0, z1 = complex(436, 157), complex(500, 155)            # our iris centres
+w0, w1 = complex(149.8, 870.2), complex(213.4, 844.0)    # the sheet's iris centres
+r = (w1 - w0) / (z1 - z0); t = w0 - r * z0               # ours -> sheet
+sample(r.real * X - r.imag * Y + t.real, r.imag * X + r.real * Y + t.imag).save('ref_coat/head_aligned.png')
+# 2) full figure with a different head/body ratio: piecewise y about the chin, x about a measured centre line
+CHIN_R, CHIN_O, S_HEAD, S_BODY = 117.0, 229.0, 2.21, 2.45  # sheet chin y, our chin y, scale above / below the chin
+ry = np.where(Y <= CHIN_O, CHIN_R - (CHIN_O - Y) / S_HEAD, CHIN_R + (Y - CHIN_O) / S_BODY)
+sxl = np.where(Y <= CHIN_O, S_HEAD, S_BODY)
+cx = np.interp(ry, [0, 117, 258, 590, 700], [211, 216, 210, 212, 220])   # sheet centre line by height (measured)
+sample(cx + (X - CX) / sxl, ry).save('ref_coat/front_aligned.png')
+# check any linear map M before trusting it: equal singular values, mapped axes at 90 degrees
+def distortion(M):
+    s = np.linalg.svd(np.asarray(M, float), compute_uv=False); ex, ey = np.asarray(M, float).T
+    return s[0] / s[1] - 1, np.degrees(np.arccos(ex @ ey / np.linalg.norm(ex) / np.linalg.norm(ey)))
+```
 
 Soft form shadow along a contour (no misaligned block edge): draw 3 ribbons centred on the contour points, widths
 13/9/5 at opacity .14/.16/.2 in the shadow colour, inside a clip-path of the skin shape. For a side shade that must
